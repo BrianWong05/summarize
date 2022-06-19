@@ -25,5 +25,5 @@ app.add_middleware(
 
 @app.post('/sum')
 def summarize(source: Schemas.summarize_text):
-    outputs = Summarize.summarize(source.text, source.precent)
+    outputs = Summarize.summarize(source.text, source.percent)
     return{"outputs": outputs}
