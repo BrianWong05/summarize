@@ -33,6 +33,6 @@ Requests body
 Responses
 ```
 {
-    "outputs": ""
+    "outputs": "summarize text"
 }
 ```
