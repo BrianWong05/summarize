@@ -1,38 +1,31 @@
-from heapq import nlargest
-from string import punctuation
 
-import spacy
-from spacy.lang.en.stop_words import STOP_WORDS
+from transformers import pipeline
 
-spacy.load('en_core_web_sm')
+summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
 
+def summarize(text: str, per: float):
+    text = text.replace('\n\n', ' ')
+    text = text.replace('.', '.<eos>')
+    text = text.replace('?', '?<eos>')
+    text = text.replace('!', '!<eos>')
+    sentences = text.split('<eos>')
+    current_chunk = 0
+    max_chunk = 500 
+    chunks = []
+    for sentence in sentences:
+        if len(chunks) == current_chunk + 1: 
+            if len(chunks[current_chunk]) + len(sentence.split(' ')) <= max_chunk:
+                chunks[current_chunk].extend(sentence.split(' '))
+            else:
+                current_chunk += 1
+                chunks.append(sentence.split(' '))
+        else:
+            print(current_chunk)
+            chunks.append(sentence.split(' '))
 
-def summarize(text, per):
-    nlp = spacy.load('en_core_web_sm')
-    doc = nlp(text)
-    tokens = [token.text for token in doc]
-    word_frequencies = {}
-    for word in doc:
-        if word.text.lower() not in list(STOP_WORDS):
-            if word.text.lower() not in punctuation:
-                if word.text not in word_frequencies.keys():
-                    word_frequencies[word.text] = 1
-                else:
-                    word_frequencies[word.text] += 1
-    max_frequency = max(word_frequencies.values())
-    for word in word_frequencies.keys():
-        word_frequencies[word] = word_frequencies[word]/max_frequency
-    sentence_tokens = [sent for sent in doc.sents]
-    sentence_scores = {}
-    for sent in sentence_tokens:
-        for word in sent:
-            if word.text.lower() in word_frequencies.keys():
-                if sent not in sentence_scores.keys():
-                    sentence_scores[sent] = word_frequencies[word.text.lower()]
-                else:
-                    sentence_scores[sent] += word_frequencies[word.text.lower()]
-    select_length = int(len(sentence_tokens)*per)
-    summary = nlargest(select_length, sentence_scores, key=sentence_scores.get)
-    final_summary = [word.text for word in summary]
-    summary = ''.join(final_summary)
-    return summary
+    for chunk_id in range(len(chunks)):
+        chunks[chunk_id] = ' '.join(chunks[chunk_id])
+    Len = len(text.split())
+    res = summarizer(chunks, min_length=int(Len*(per-0.05)/len(chunks)), max_length=int(Len*(per+0.05)/len(chunks)))
+    sum = '\n\n'.join([summ['summary_text'] for summ in res])
+    return sum
